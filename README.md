@@ -3,7 +3,11 @@
 原作者github地址：https://github.com/BlinkDL/AI-Writer
 
 # 更新记录
-- 2022/02/27 切换到dev分支（旧代码在main分支），dev分支同步[原作者代码](https://github.com/BlinkDL/AI-Writer)更新到最新版本。
+- 2022/02/27 切换到dev分支（旧代码在main分支），dev分支同步[原作者代码](https://github.com/BlinkDL/AI-Writer)，并且更新到最新版本，此外还添加了Aistudio项目链接，可以直接快速体验！
+
+# Aistudio项目链接
+【爽文生成器】用魔改 GPT 生成网文 https://aistudio.baidu.com/aistudio/projectdetail/3532246
+
 
 # 目录结构
 ```bash
