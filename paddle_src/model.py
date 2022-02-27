@@ -7,7 +7,6 @@ import logging
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-from paddlenlp.ops import einsum
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +71,9 @@ class RWKV_TimeMix(nn.Layer):
 
         kv = (k * v).reshape(shape=[B, T, self.n_head, self.head_size])
 
-        wkv = einsum("htu,buhc->bthc", self.time_ww[:,:T,:T], kv).reshape(shape=[B, T, -1])
+        wkv = paddle.einsum("htu,buhc->bthc", self.time_ww[:, :T, :T], kv).reshape(
+            shape=[B, T, -1]
+        )
 
         rwkv = F.sigmoid(r) * wkv / sum_k
 
@@ -149,7 +150,14 @@ class GPT(nn.Layer):
             default_initializer=nn.initializer.Constant(1.0),
         )
         self.head = nn.Linear(config.n_embd, config.vocab_size, bias_attr=False)
+        self.head_q = nn.Linear(config.n_embd, 256)
+        self.head_k = nn.Linear(config.n_embd, 256)
+        self.register_buffer(
+            "copy_mask", paddle.tril(paddle.ones((config.ctx_len, config.ctx_len)))
+        )
+
         self.ctx_len = config.ctx_len
+
         logger.info(
             "number of parameters: %e", sum(p.numel() for p in self.parameters())
         )
@@ -164,8 +172,13 @@ class GPT(nn.Layer):
         x = self.tok_emb(idx)
         x = self.blocks(x)
         x = self.ln_f(x)
+        q = self.head_q(x)[:, :T, :]
+        k = self.head_k(x)[:, :T, :]
+        c = paddle.matmul(q, k, transpose_y=True) / 256
+        c = paddle.where(self.copy_mask[:T, :T] == 0, paddle.zeros((1,)), c)
+        c = c @ F.one_hot(idx, num_classes=self.config.vocab_size).astype(c.dtype)
         x = x * self.time_out[:, :T, :]
-        x = self.head(x)
+        x = self.head(x) + c
 
         loss = None
         if targets is not None:

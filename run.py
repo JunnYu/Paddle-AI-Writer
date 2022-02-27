@@ -8,29 +8,31 @@ import json
 import numpy as np
 import paddle
 
-import paddle_src
+import paddle_src.utils
 from paddle_src.model import GPT, GPTConfig
 
 # paddle_src.utils.set_seed(42) # 是否固定随机数（固定后每次运行的生成结果都一样）
 
 print("\nPaddle2.x版本AI人工智障写作 https://github.com/BlinkDL/AI-Writer")
 print("注：这是使用paddle框架改写后的AI人工智障写作！！！！！！！！！！！！！")
-print("请关注我的知乎 https://zhuanlan.zhihu.com/p/394766831")
+print("请关注原作者的知乎 https://zhuanlan.zhihu.com/p/394766831")
 print("\n声明：模型的训练数据全部来自网文，缺乏生活常识。生成的文字仅供娱乐。请遵守法律法规。")
 
-MODEL_NAME = "model/model_state"
-WORD_NAME = "model/xuanhuan-2021-10-26"
+# 需 paddle 2.2.x 及以上版本
 
-NUM_OF_RUNS = 9999
-LENGTH_OF_EACH = 200  # 每次写多少字
+MODEL_NAME = "model/wangwen-2022-02-15"  # 模型名
+WORD_NAME = "model/wangwen-2022-02-15"  # 这个也修改
 
-min_p_ratio = 0.02  # 这个数字的范围是 0 到 1。数字越大，生成效果越规矩。数字越小，变化越多。
+NUM_OF_RUNS = 999  # 写多少遍
+LENGTH_OF_EACH = 512  # 每次写多少字
 
+top_p = 0.75  # 这个的范围是 0 到 1。越大，变化越多。越小，生成效果越规矩。自己试试 0 和 0.5 和 1.0 的效果就知道了
+top_p_newline = 0.9
+
+# 开头非常重要。开头需创造剧情点。开头文笔越好，续写就越好。开头乱写，续写也乱写。
 # 开头这样输入：
-# context = "我"
-# context = "他"
-# context = "她"
 # context = "魔法"
+# context = "“区区"
 # context = "三体舰队"
 context = "这是一颗"
 # context = "众人一惊，没想到这林黛玉的剑法竟如此精妙，只见在那剑影下，剑尖朝着伏地魔的脖子探去，眼见避无可避，伏地魔情急，大喊"
@@ -110,19 +112,21 @@ for run in range(NUM_OF_RUNS):
         pos = -1 if real_len >= ctx_len else real_len - 1
 
         if train_dataset.itos[int(x[real_len - 1])] == "\n":
-            char = paddle_src.utils.sample_logits(out, pos, temperature=1.0, top_p=0.995)
+            char = paddle_src.utils.sample_logits(
+                out, pos, temperature=1.0, top_p=top_p_newline
+            )
         else:
             char = paddle_src.utils.sample_logits(
-                out, pos, temperature=0.9, min_p_pow=2.0, min_p_ratio=min_p_ratio
+                out, pos, temperature=1.0, top_p=top_p
             )
 
         x = np.append(x, char)
         real_len += 1
 
-        if i % 10 == 9 or i == LENGTH_OF_EACH - 1 or i < 10:
+        if i % 2 == 1 or i == LENGTH_OF_EACH - 1 or i < 10:
             completion = "".join(
                 [train_dataset.itos[int(i)] for i in x[print_begin:real_len]]
             )
-            print(completion.replace("\n", "\n  "), end="")
+            print(completion.replace("\n", "\n  "), end="", flush=True)
             print_begin = real_len
     print()

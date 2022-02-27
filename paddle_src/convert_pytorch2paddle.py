@@ -1,9 +1,11 @@
 from collections import OrderedDict
 
+
 def convert_pytorch_checkpoint_to_paddle(pytorch_checkpoint_path, paddle_dump_path):
     import paddle
-    import torch
     import paddle.nn.functional as F
+    import torch
+
     dont_transpose = [
         ".ln1.weight",
         ".ln2.weight",
@@ -18,7 +20,7 @@ def convert_pytorch_checkpoint_to_paddle(pytorch_checkpoint_path, paddle_dump_pa
     if hasattr(pytorch_state_dict, "state_dict"):
         config = pytorch_state_dict.config
         pytorch_state_dict = pytorch_state_dict.state_dict()
-    
+
     paddle_state_dict = OrderedDict()
     for k, v in pytorch_state_dict.items():
         is_transpose = False
@@ -33,14 +35,12 @@ def convert_pytorch_checkpoint_to_paddle(pytorch_checkpoint_path, paddle_dump_pa
         print(f"Converting: {oldk} => {k} | is_transpose {is_transpose}")
         paddle_state_dict[k] = paddle.to_tensor(v.data.numpy())
 
-
     for i in range(config.n_layer):
-        prefix = f'blocks.{i}.attn.'
-        time_w = paddle_state_dict[prefix + 'time_w']
-        time_alpha = paddle_state_dict[prefix + 'time_alpha']
-        time_beta = paddle_state_dict[prefix + 'time_beta']
-        mask = paddle_state_dict[prefix + 'mask']
-        
+        prefix = f"blocks.{i}.attn."
+        time_w = paddle_state_dict[prefix + "time_w"]
+        time_alpha = paddle_state_dict[prefix + "time_alpha"]
+        time_beta = paddle_state_dict[prefix + "time_beta"]
+
         TT = config.ctx_len
         T = config.ctx_len
 
@@ -49,18 +49,16 @@ def convert_pytorch_checkpoint_to_paddle(pytorch_checkpoint_path, paddle_dump_pa
         w = w[:, :-TT].reshape(shape=[-1, TT, 2 * TT - 1])
         w = w[:, :, TT - 1 :]
         w = w[:, :T, :T] * time_alpha[:, :, :T] * time_beta[:, :T, :]
-        w = paddle.where(mask[:T, :T] == 0, paddle.zeros((1,)), w)
 
-        paddle_state_dict[prefix + 'time_ww'] = w
-        del paddle_state_dict[prefix + 'time_w']
-        del paddle_state_dict[prefix + 'time_alpha']
-        del paddle_state_dict[prefix + 'time_beta']
-        del paddle_state_dict[prefix + 'mask']
+        paddle_state_dict[prefix + "time_ww"] = w
+        del paddle_state_dict[prefix + "time_w"]
+        del paddle_state_dict[prefix + "time_alpha"]
+        del paddle_state_dict[prefix + "time_beta"]
 
     paddle.save(paddle_state_dict, paddle_dump_path)
 
 
 if __name__ == "__main__":
     convert_pytorch_checkpoint_to_paddle(
-        "model/xuanhuan-2021-10-26.pth", "model/model_state.pdparams"
+        "model/wangwen-2022-02-15.pth", "model/wangwen-2022-02-15.pdparams"
     )

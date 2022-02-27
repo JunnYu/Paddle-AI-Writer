@@ -6,13 +6,16 @@ import json
 import random
 import time
 
+# 需 paddle 2.2.x 及以上版本
+
 _DEBUG_LEVEL_ = 2  # 2 = full, 1 = partial, 0 = none
 PORT_NUM = 8266
 
-MODEL_NAME = "model/model_state"
-WORD_NAME = "model/xuanhuan-2021-10-26"
+MODEL_NAME = "model/wangwen-2022-02-15"  # 模型名
+WORD_NAME = "model/wangwen-2022-02-15"  # 这个也修改
 
-min_p_ratio = 0.02  # 这个数字的范围是 0 到 1。数字越大，生成效果越规矩。数字越小，变化越多。
+top_p = 0.75  # 这个的范围是 0 到 1。越大，变化越多。越小，生成效果越规矩。自己试试 0 和 0.5 和 1.0 的效果就知道了
+top_p_newline = 0.9
 
 LENGTH_OF_EACH = 20  # 每次写多少字
 
@@ -154,7 +157,7 @@ def NeuralWorker(queueZ, queueX):
     import numpy as np
     import paddle
 
-    import paddle_src
+    import paddle_src.utils
     from paddle_src.model import GPT, GPTConfig
 
     # paddle_src.utils.set_seed(42) # 是否固定随机数（固定后每次运行的生成结果都一样）
@@ -196,7 +199,7 @@ def NeuralWorker(queueZ, queueX):
         K, Z = queueZ.get()
         # print('neural task', K, Z)
 
-        ttt = time.time()
+        # ttt = time.time()
 
         context = Z
         context = context.strip().split("\n")
@@ -232,15 +235,11 @@ def NeuralWorker(queueZ, queueX):
 
                 if train_dataset.itos[int(x[real_len - 1])] == "\n":
                     char = paddle_src.utils.sample_logits(
-                        out, pos, temperature=1.0, top_p=0.995
+                        out, pos, temperature=1.0, top_p=top_p_newline
                     )
                 else:
                     char = paddle_src.utils.sample_logits(
-                        out,
-                        pos,
-                        temperature=0.9,
-                        min_p_pow=2.0,
-                        min_p_ratio=min_p_ratio,
+                        out, pos, temperature=1.0, top_p=top_p
                     )
 
                 x = np.append(x, char)

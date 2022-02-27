@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>AI人工智障写作</title>
+    <title>paddle2.x版本AI人工智障写作</title>
 </head>
 <style>
     * {
@@ -56,21 +56,21 @@
     .writeBtn {
         width: 45%;
         height: 3em;
-        font-size: 150%;
+        font-size: 100%;
         cursor: pointer;
     }
 </style>
 
 <body>
     <div style="text-align: center; margin: 20px 0; line-height: 2;">
-        <p>Paddle2.x版本AI人工智障写作 <a href="https://github.com/BlinkDL/AI-Writer" target="_blank">https://github.com/BlinkDL/AI-Writer</a> 请关注原作者的知乎 <a href="https://zhuanlan.zhihu.com/p/423646620" target="_blank">https://zhuanlan.zhihu.com/p/423646620</a></p>
-        <p style="color:darkred">请记得经常备份你的写作内容！模型的训练数据全部来自网文，缺乏生活常识。生成的文字仅供娱乐。请遵守法律法规。</p>
+        <p>这是paddle2.x版本AI人工智障写作 <a href="https://github.com/JunnYu/Paddle-AI-Writer" target="_blank"> https://github.com/JunnYu/Paddle-AI-Writer</a> </p> <p>原作者的代码<a href="https://github.com/BlinkDL/AI-Writer" target="_blank"> https://github.com/BlinkDL/AI-Writer</a></p> <p> 请关注原作者的知乎 <a href="https://zhuanlan.zhihu.com/p/423646620" target="_blank"> https://zhuanlan.zhihu.com/p/423646620</a></p>
+        <p style="color:darkred">请记得经常备份写作内容！模型的训练数据全部来自网文，缺乏生活常识。生成的文字仅供娱乐。请遵守法律法规。</p>
         <p></p>
     </div>
     <div id="textWrap">
         <div style="width: 100%; display: flex; flex-direction:row; justify-content:space-evenly;">
-            <button class="writeBtn" onclick="sendText()">续写 (alt+Q)</button>
-            <button class="writeBtn" onclick="rewriteText()">换个写法 (alt+E) 注意会清内容</button>
+            <button class="writeBtn" onclick="sendText()">续写 (alt+Q) 点击后，必须等内容出来，再继续点，否则内容全部混在一起</button>
+            <button class="writeBtn" onclick="rewriteText()">换个写法 (alt+E) 如果手工修改了下面的内容，不能点这个，应该点【续写】</button>
         </div>
         <br>
         <textarea id="textArea">这是</textarea>

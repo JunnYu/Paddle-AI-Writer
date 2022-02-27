@@ -1,3 +1,1 @@
-from . import utils
-from . import model
-from . import convert_pytorch2paddle
+from . import convert_pytorch2paddle, model, utils

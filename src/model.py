@@ -2,11 +2,13 @@
 # AI人工智障写作 - https://github.com/BlinkDL/AI-Writer
 ########################################################################################################
 
-import math
 import logging
+import math
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,7 +22,8 @@ class RWKV_TimeMix(nn.Module):
         self.head_size = config.n_attn // config.n_head
 
         self.time_ww = nn.Parameter(
-            torch.ones(config.n_head, config.ctx_len, config.ctx_len))
+            torch.ones(config.n_head, config.ctx_len, config.ctx_len)
+        )
         self.time_gamma = nn.Parameter(torch.ones(config.ctx_len, 1))
 
         self.time_shift = nn.ZeroPad2d((0, 0, 1, -1))
@@ -38,8 +41,7 @@ class RWKV_TimeMix(nn.Module):
     def forward(self, x):
         B, T, C = x.size()
 
-        x = torch.cat(
-            [self.time_shift(x[:, :, :C//2]), x[:, :, C//2:]], dim=-1)
+        x = torch.cat([self.time_shift(x[:, :, : C // 2]), x[:, :, C // 2 :]], dim=-1)
 
         k = self.key(x)
         v = self.value(x)
@@ -51,13 +53,17 @@ class RWKV_TimeMix(nn.Module):
 
         kv = (k * v).view(B, T, self.n_head, self.head_size)
 
-        wkv = (torch.einsum('htu,buhc->bthc', self.time_ww[:,:T,:T], kv)
-               ).contiguous().view(B, T, -1)
+        wkv = (
+            (torch.einsum("htu,buhc->bthc", self.time_ww[:, :T, :T], kv))
+            .contiguous()
+            .view(B, T, -1)
+        )
 
         rwkv = torch.sigmoid(r) * wkv / sum_k
 
         rwkv = self.output(rwkv)
         return rwkv * self.time_gamma[:T, :]
+
 
 class RWKV_ChannelMix(nn.Module):
     def __init__(self, config, layer_id):
@@ -77,8 +83,7 @@ class RWKV_ChannelMix(nn.Module):
     def forward(self, x):
         B, T, C = x.size()
 
-        x = torch.cat(
-            [self.time_shift(x[:, :, :C//2]), x[:, :, C//2:]], dim=-1)
+        x = torch.cat([self.time_shift(x[:, :, : C // 2]), x[:, :, C // 2 :]], dim=-1)
         k = self.key(x)
         v = self.value(x)
         r = self.receptance(x)
@@ -124,17 +129,23 @@ class GPT(nn.Module):
 
         self.tok_emb = nn.Embedding(config.vocab_size, config.n_embd)
 
-        self.blocks = nn.Sequential(*[Block(config, i)
-                                    for i in range(config.n_layer)])
+        self.blocks = nn.Sequential(*[Block(config, i) for i in range(config.n_layer)])
 
         self.ln_f = nn.LayerNorm(config.n_embd)
         self.time_out = nn.Parameter(torch.ones(1, config.ctx_len, 1))
         self.head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
 
+        self.head_q = nn.Linear(config.n_embd, 256)
+        self.head_k = nn.Linear(config.n_embd, 256)
+        self.register_buffer(
+            "copy_mask", torch.tril(torch.ones(config.ctx_len, config.ctx_len))
+        )
+
         self.ctx_len = config.ctx_len
 
-        logger.info("number of parameters: %e", sum(p.numel()
-                    for p in self.parameters()))
+        logger.info(
+            "number of parameters: %e", sum(p.numel() for p in self.parameters())
+        )
 
     def get_ctx_len(self):
         return self.ctx_len
@@ -148,8 +159,13 @@ class GPT(nn.Module):
         x = self.blocks(x)
 
         x = self.ln_f(x)
+        q = self.head_q(x)[:, :T, :]
+        k = self.head_k(x)[:, :T, :]
+        c = (q @ k.transpose(-2, -1)) * (1.0 / 256)
+        c = c.masked_fill(self.copy_mask[:T, :T] == 0, 0)
+        c = c @ F.one_hot(idx, num_classes=self.config.vocab_size).float()
         x = x * self.time_out[:, :T, :]
-        x = self.head(x)
+        x = self.head(x) + c
 
         loss = None
         if targets is not None:
